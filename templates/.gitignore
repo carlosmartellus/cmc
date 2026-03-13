@@ -1,0 +1,9 @@
+# CMC Environment
+.venv/
+__pycache__/
+*.py[cod]
+.env
+
+# CMC Project Specifics
+commons/config.toml
+*.log
