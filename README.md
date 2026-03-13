@@ -62,7 +62,7 @@ The `cmc` command is the central tool of the forge:
 
 4.  **Start the Engines (for now):**
     ```bash
-    gunicorn --log-level debug svPrueba.app:application
+    gunicorn --log-level debug sv[my_project] app:application
     ```
 
 ---
