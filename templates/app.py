@@ -4,7 +4,7 @@ import tomllib
 import psycopg2
 import re
 from pathlib import Path
-from typing import Callable, Dict, Any
+from typing import Callable, Dict, Any, List
 import importlib
 import pkgutil
 
@@ -23,7 +23,8 @@ class CMCApp:
         self.config = self._load_config()
         
         self.env_name = force_env or os.environ.get('CMC_ENV') or self.config.get('current_env', 'dev')
-        self.routes: Dict[str, Dict[str, Callable]] = {}
+        
+        self.routes: List[Dict[str, Any]] = [] 
 
         self.env_cfg = self.config.get(self.env_name, {})
     
