@@ -1,12 +1,20 @@
 #!/bin/bash
 
+set -euo pipefail
+shopt -s failglob
+
 REPO_URL="https://github.com/carlosmartellus/cmc.git"
-TARGET_DIR="/usr/local/lib/cmc"
-BIN_PATH="/usr/local/bin/cmc"
+
+TARGET_DIR="${1:-/usr/local/lib/cmc}"
+BIN_PATH="${2:-/usr/local/bin/cmc}"
 
 echo "Installing CMC from GitHub"
 
-sudo rm -rf "$TARGET_DIR"
+if [ -d "$TARGET_DIR" ]; then
+    sudo rm -rf "${TARGET_DIR:?Error: TARGET_DIR no definida}"
+else
+    exit 1
+fi
 
 sudo git clone "$REPO_URL" "$TARGET_DIR"
 
