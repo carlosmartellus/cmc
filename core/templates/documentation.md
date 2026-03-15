@@ -86,21 +86,14 @@ Following the **SQL-First** philosophy, CMC does not generate models from code. 
 
 `cmc db create [migration_name]`
 
-This command generates two synchronized files within the **Backend** at `sv{{PROJECT_NAME}}/migrations/`:
-* `[timestamp]_[migration_name].sql` (The **UP** script)
-* `[timestamp]_[migration_name].down.sql` (The **DOWN** script)
-
+This command generates a file within the **Backend** at `sv{{PROJECT_NAME}}/migrations/`:
+* `[timestamp]_[migration_name].sql`
 
 
 #### The UP Script (`.sql`)
 This file is the blueprint for your data evolution. Use it to define your **DDL (Data Definition Language)**: `CREATE TABLE`, `ALTER TABLE`, `CREATE INDEX`, or any other structural changes. 
 
 **Best Practice**: CMC wraps these files in `BEGIN;` and `COMMIT;` blocks by default. Ensure your logic remains within these boundaries to guarantee **atomicity**—if any part of the migration fails, the entire database state remains untouched.
-
-#### The DOWN Script (`.down.sql`)
-This file is the "undo" button for your schema changes. It must contain the logic to revert exactly what the UP script performed (e.g., `DROP TABLE`, `ALTER TABLE ... DROP COLUMN`).
-
-> **Warning**: The `.down.sql` file is mandatory for the **CMC Rollback** engine to function. If you perform non-destructive changes or metadata updates that don't require a revert, do not delete this file; simply leave the transaction block empty to maintain the integrity of the migration chain.
 
 ### 2. Migration Execution
 Once your scripts are ready, you must synchronize the **Server** with the database engine. CMC requires an explicit environment flag to prevent accidental deployments to the wrong infrastructure.
@@ -134,9 +127,8 @@ If a deployment introduces a flaw, CMC allows you to step back in time. Like the
 
 
 #### Mechanics:
-* **The Undo Path**: CMC identifies the last `N` applied migrations (positional `steps`, default is 1) and executes their corresponding `.down.sql` counterparts.
+* **The Undo Path**: CMC identifies the last `N` applied migrations (positional `steps`, default is 1) and executes a `DROP` for any migration.
 * **Cleanup**: Once the rollback is successful, the records are removed from the `cmc_migrations` table, marking them as "pending" for future corrected deployments.
-* **Safety Lock**: If a `.down.sql` file is missing or a step fails, the entire rollback sequence is aborted to keep the database in a known state.
 
 ## API
 

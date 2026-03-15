@@ -1,5 +1,19 @@
+# Python & Bytecode
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
 .env
-.venv
-templates/route.py
+
+# CMC Core & DB
+commons/config.toml
+gunicorn.ctl
+
+# VS Code
+.vscode/
+!.vscode/extensions.json
+
+# Logs & OS
+*.log
+.DS_Store

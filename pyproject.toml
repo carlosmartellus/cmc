@@ -9,5 +9,9 @@ dependencies = [
     "psycopg2-binary",
 ]
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["core*"]
+
 [project.scripts]
-cmc = "cmc_core.cli:main"
+cmc = "core.cli:main"
