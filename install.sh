@@ -55,6 +55,12 @@ sudo chmod +x "$BIN_PATH"
 
 sudo chown -R "$REAL_USER:$REAL_USER" "$INSTALL_DIR"
 
+echo -e "\033[94m[INFO]\033[0m Activating bash autocomplete..."
+if ! grep -q "register-python-argcomplete cmc" "$HOME/.bashrc"; then
+    echo 'eval "$('"$INSTALL_DIR"'/.venv/bin/register-python-argcomplete cmc)"' >> "$HOME/.bashrc"
+    echo -e "\033[93m[NOTE]\033[0m Autocomplete installed. Please run 'source ~/.bashrc' or restart your terminal."
+fi
+
 echo -e "\033[92m[SUCCESS]\033[0m CMC Framework is ready to roll."
 echo -e "\033[94m[INFO]\033[0m Source location: $INSTALL_DIR"
 echo -e "\033[94m[INFO]\033[0m Global command: cmc"

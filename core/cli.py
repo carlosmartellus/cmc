@@ -3,7 +3,23 @@ import subprocess
 import tomllib
 import os
 from pathlib import Path
+import argcomplete
 from core.cmc_core import cmc
+
+def migration_name_completer(prefix, parsed_args, **kwargs):
+    m_dir = cmc.get_migrations_path()
+    if not m_dir or not m_dir.exists():
+        return []
+    
+    files = [f for f in os.listdir(m_dir) if f.endswith('.sql')]
+    
+    valid_names = []
+    for f in files:
+        if '_' in f:
+            clean_name = f.split('_', 1)[1].replace('.sql', '')
+            valid_names.append(clean_name)
+            
+    return [name for name in valid_names if name.startswith(prefix)]
 
 def main():
     parser = argparse.ArgumentParser(description="CMC CLI v2")
@@ -49,14 +65,66 @@ def main():
         args.steps
     ))
 
+    # db rescue
+    p_db_rescue = db_sub.add_parser("rescue")
+    p_db_rescue.add_argument("name", help="Fix name")
+    p_db_rescue.set_defaults(func=lambda args: cmc.migrations.rescue(args.name))
+
+    # db restore
+    p_db_restore = db_sub.add_parser("restore")
+    p_db_restore.add_argument("backup_name", nargs="?", default=None, help="Backup file name (optional)")
+    
+    eg_res = p_db_restore.add_mutually_exclusive_group()
+    eg_res.add_argument("--dev", action="store_true")
+    eg_res.add_argument("--prod", action="store_true")
+    
+    p_db_restore.set_defaults(func=lambda args: cmc.migrations.restore(
+        "prod" if args.prod else "dev", 
+        args.backup_name
+    ))
+
+    # db status
+    p_db_status = db_sub.add_parser("status")
+    eg_stat = p_db_status.add_mutually_exclusive_group()
+    eg_stat.add_argument("--dev", action="store_true")
+    eg_stat.add_argument("--prod", action="store_true")
+    p_db_status.set_defaults(func=lambda args: cmc.migrations.status("prod" if args.prod else "dev"))
+
+    # db gen
+    p_db_gen = db_sub.add_parser("gen", help="Generators for DB structures")
+    gen_sub = p_db_gen.add_subparsers(dest="gen_command", required=True)
+    
+    p_gen_analysis = gen_sub.add_parser("analysis", help="Forge an analysis contract for a table or view")
+    p_gen_analysis.add_argument("name", help="Structure name")
+    p_gen_analysis.set_defaults(func=lambda args: cmc.gen_analysis_config(args.name))
+
+    # db analysis
+    p_db_analysis = db_sub.add_parser("analysis", help="Run performance analysis on an entity")
+    p_db_analysis.add_argument("name", nargs="?", default=None, help="Table or View to analyze (default: all in analysis.json)")
+    p_db_analysis.add_argument("--reset", action="store_true", help="Hard reset: re-clone schema from source")
+    p_db_analysis.add_argument("--remove", action="store_true", help="Vaporize the lab database")
+    
+    p_db_analysis.set_defaults(func=lambda args: cmc.analysis.execute(
+        args.name, 
+        reset=args.reset, 
+        remove=args.remove
+    ))
+
     # api
     p_api = subparsers.add_parser("api")
     api_sub = p_api.add_subparsers(dest="api_command", required=True)
     
+    # api sync
+    p_sync = api_sub.add_parser("sync")
+    def handle_sync(args):
+        cmc._setup_routes()
+        cmc.sync_api_metadata()
+    p_sync.set_defaults(func=handle_sync)
+    
     reg_sub_parser = api_sub.add_parser("register")
     reg_types = reg_sub_parser.add_subparsers(dest="reg_type", required=True)
     
-    # api register
+    # api register entity
     p_ent = reg_types.add_parser("entity")
     p_ent.add_argument("name")
     p_ent.set_defaults(func=lambda args: cmc.register_entity(args.name))
@@ -65,56 +133,48 @@ def main():
     p_rem = subparsers.add_parser("remove")
     p_rem.set_defaults(func=lambda args: cmc.remove_self())
 
+    # up
     p_up = subparsers.add_parser("up")
     def handle_up(args):
         import sys
-        import core
         
-        config_path = Path("commons/config.toml")
-        if not config_path.exists():
-            print(f"\033[91m[ERROR]\033[0m No se encontró {config_path.absolute()}. ¿Estás en la raíz del proyecto?")
+        if not cmc.config_path or not cmc.config_path.exists():
+            cmc.log.error("config.toml not found. Are you in the project root?")
             return
 
-        with open(config_path, "rb") as f:
+        with open(cmc.config_path, "rb") as f:
             config = tomllib.load(f)
         
         srv = config.get('server', {})
-        host = srv.get('host', '0.0.0.0')
-        port = srv.get('port', 8000)
-        workers = srv.get('workers', 4)
-        threads = srv.get('threads', 2)
-        timeout = srv.get('timeout', 30)
-        loglevel = srv.get('log_level', 'info')
-
-        framework_dir = str(Path(core.__file__).resolve().parent.parent)
-        
-        project_dir = os.getcwd()
+        host, port = srv.get('host', '0.0.0.0'), srv.get('port', 8000)
+        workers, threads = srv.get('workers', 4), srv.get('threads', 2)
 
         venv_bin = os.path.dirname(sys.executable)
         gunicorn_bin = os.path.join(venv_bin, "gunicorn")
 
-        cmc.log.info(f"Launching CMC Engine on {host}:{port} ({workers} workers)...")
+        cmc.log.info(f"Launching CMC Engine on {host}:{port}...")
 
-        current_env = os.environ.copy()
-        paths = [project_dir, framework_dir]
-        current_env["PYTHONPATH"] = ":".join(paths) + ":" + current_env.get("PYTHONPATH", "")
+        env = os.environ.copy()
+        env["PYTHONPATH"] = f".:{env.get('PYTHONPATH', '')}"
 
         subprocess.run([
             gunicorn_bin,
-            "-w", str(workers),
-            "--threads", str(threads),
-            "--capture-output",
-            "--log-level", "debug",
+            "-w",
+            str(workers),
+            "--threads",
+            str(threads),
             "-b", f"{host}:{port}",
-            "--chdir", project_dir,
+            "--chdir",
+            ".",
             "core.cmc_core:application"
-        ], env=current_env)
+        ], env=env)
     p_up.set_defaults(func=handle_up)
 
-    # execution
-    args = parser.parse_args()
+    argcomplete.autocomplete(parser)
     
-    args.func(args)
-
+    args = parser.parse_args()
+    if hasattr(args, "func"):
+        args.func(args)
+    
 if __name__ == "__main__":
     main()

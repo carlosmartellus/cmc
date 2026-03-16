@@ -32,14 +32,21 @@ class DBEngine:
             return False
         finally: conn.close()
 
-    def get_table_columns(self, table_name: str) -> List[str]:
+    def get_table_columns(self, table_name: str) -> Dict[str, str]:
         conn = self.get_connection()
-        if not conn: return []
+        if not conn: return {}
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = %s AND table_schema = 'public' ORDER BY ordinal_position;", (table_name,))
-                return [row[0] for row in cur.fetchall() if row[0] != 'id']
-        finally: conn.close()
+                query = """
+                    SELECT column_name, data_type 
+                    FROM information_schema.columns 
+                    WHERE table_name = %s AND table_schema = 'public' 
+                    ORDER BY ordinal_position;
+                """
+                cur.execute(query, (table_name,))
+                return {row[0]: row[1] for row in cur.fetchall() if row[0] != 'id'}
+        finally: 
+            conn.close()
 
     def forge_infrastructure(self, admin_u, admin_p, target_db, project_u, project_p):
         try:
@@ -105,3 +112,42 @@ class DBEngine:
                 return [row[0] for row in cur.fetchall()]
         finally: 
             conn.close()
+
+    def get_live_structure(self, name: str) -> Optional[str]:
+        try:
+            with self.cursor() as cur:
+                query = """
+                    SELECT table_type 
+                    FROM information_schema.tables 
+                    WHERE table_name = %s 
+                    AND table_schema = 'public';
+                """
+                cur.execute(query, (name,))
+                result = cur.fetchone()
+                
+                if not result:
+                    return None
+                
+                raw_type = result[0]
+                return "TABLE" if raw_type == "BASE TABLE" else "VIEW"
+        except Exception as e:
+            self.cmc.log.error(f"Live structure inspection failed for '{name}': {e}")
+            return None
+        
+    def get_table_relationships(self, table_name: str) -> Dict[str, str]:
+        try:
+            with self.cursor() as cur:
+                query = """
+                    SELECT kcu.column_name, ccu.table_name AS foreign_table_name
+                    FROM information_schema.table_constraints AS tc
+                    JOIN information_schema.key_column_usage AS kcu
+                      ON tc.constraint_name = kcu.constraint_name
+                    JOIN information_schema.constraint_column_usage AS ccu
+                      ON ccu.constraint_name = tc.constraint_name
+                    WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name = %s;
+                """
+                cur.execute(query, (table_name,))
+                return {row[0]: row[1] for row in cur.fetchall()}
+        except Exception as e:
+            self.cmc.log.error(f"Failed to fetch relationships for {table_name}: {e}")
+            return {}

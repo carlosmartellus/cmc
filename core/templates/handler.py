@@ -56,7 +56,7 @@ WHERE id = %s;
 
 {{fk_hints}}
 
-@cmc.route(CONTRACT["create"]["path"], method=CONTRACT["create"]["method"], schema=CONTRACT["create"]["input"])
+@cmc.route(CONTRACT["create"], entity="{{entity}}", action="create")
 def handle_{{entity}}_create():
     data = request.get_json()
     try:
@@ -69,7 +69,7 @@ def handle_{{entity}}_create():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@cmc.route(CONTRACT["get"]["path"], method=CONTRACT["get"]["method"])
+@cmc.route(CONTRACT["get"], entity="{{entity}}", action="get")
 def handle_{{entity}}_get(entity_id):
     try:
         with cmc.db.cursor() as cur:
@@ -81,7 +81,7 @@ def handle_{{entity}}_get(entity_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@cmc.route(CONTRACT["update"]["path"], method=CONTRACT["update"]["method"], schema=CONTRACT["update"]["input"])
+@cmc.route(CONTRACT["update"], entity="{{entity}}", action="update")
 def handle_{{entity}}_update(entity_id):
     data = request.get_json()
     try:
@@ -92,7 +92,7 @@ def handle_{{entity}}_update(entity_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@cmc.route(CONTRACT["delete"]["path"], method=CONTRACT["delete"]["method"])
+@cmc.route(CONTRACT["delete"], entity="{{entity}}", action="delete")
 def handle_{{entity}}_delete(entity_id):
     try:
         with cmc.db.cursor() as cur:

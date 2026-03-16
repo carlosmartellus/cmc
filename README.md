@@ -1,16 +1,17 @@
 # CMC Framework
 ### *The SQL-First Framework*
 
-**CMC (Carlos Martel Cornejo)** is a framework designed for developers who demand absolute control over their infrastructure. No ORMs, no unnecessary abstractions; just **Python 3.13**, **pure PostgreSQL**, and **raw performance**.
+**CMC** is a framework designed for developers who demand absolute control over their infrastructure. No ORMs, no unnecessary abstractions; just **Python 3.13**, **pure PostgreSQL**, and **raw performance**.
 
 ---
 
 ## Philosophy
-
+* **Database as protagonist:** We refuse to treat PostgreSQL as a dumb storage layer. It is the engine of your data integrity, performance, and truth. CMC wraps around the database, not the other way around.
 * **SQL-First (No-ORM):** We eliminate hidden layers. You write real SQL, optimize your own JOINs, and manage your indexes. The database is the heart of the application, not an implementation detail.
-* **Automated Scaffolding:** The `cmc` CLI forges the base structure, allowing you to move from a concept to a functional API in minutes.
+* **Automated Scaffolding:** The CMC CLI forges the base structure, allowing you to move from a concept to a functional API in minutes.
+* **The Lab (Isolated):** Never test in production. CMC clones your live database development schema into an ephemeral, isolated environment (_cmc_lab) to run destructive stress tests and benchmark RAM/CPU impact.
 * **Atomicity by Default:** All data operations (migrations and registrations) are transactional. If something fails, the system reverts to its last safe state.
-
+* **Real Resources Result:** Performance isn't theoretical. CMC doesn't just guess query costs; it executes them. By measuring actual CPU load, RAM deltas, and millisecond execution times directly from the OS and PostgreSQL, you get empirical proof of your optimizations, not just execution plans.
 ---
 
 ## Project Structure
@@ -19,53 +20,44 @@ A CMC project is divided into three key sectors:
 
 1.  **sv[Project] (The Backend):** The backend core. A WSGI server in Python 3.13 designed to handle handler logic and migrations.
 2.  **cl[Project] (The Cockpit):** The control interface. Automatically generated with **Vite + React** (Web) or **Tauri** (Desktop). Flexible, it can be deleted without risks.
-3.  **commons/ (The Core):** The shared brain. Contains global configuration (`config.toml`) and the database connection engine.
-
----
-
-## CLI Capabilities
-
-The `cmc` command is the central tool of the forge:
-
-### Initialization
-* `cmc init --new [name]`: Forges a project from scratch, creates the databases (`dev` and `prod`), and configures the virtual environment.
-
-### Database Management
-* `cmc db create [name]`: Generates a pair of migration files (UP/DOWN) with a timestamp.
-* `cmc db migrate --dev|--prod`: Sequentially synchronizes pending migrations.
-* `cmc db rollback [steps]`: Safely reverts the database schema.
-
-### API Registration
-* `cmc api register entity [table]`: Scans a PostgreSQL table and automatically generates a **CMC Contract** and a full **CRUD Handler**.
-    * *Note: Requires the CMC Protocol (mandatory `id` column).*
+3.  **commons/ (The Core):** The shared layer containing the routes.json API Contract, ensuring the Frontend and Backend always speak the exact same language.
 
 ---
 
 ## Quick Start
 
-1.  **Install and Initiate:**
-    ```bash
-    ./install.sh
-    cmc init --new my_project
-    ```
+The `cmc` command is the central tool of the forge:
 
-2.  **Define the DB:**
-    Create a table in a migration and apply it:
-    ```bash
-    cmc db migrate --dev
-    ```
+### Installation
+CMC comes with a self-contained installer that handles system dependencies and global binary mapping.
 
-3.  **Forge the API:**
-    ```bash
-    cmc api register entity users
-    ```
+```bash
+git clone https://github.com/carlosmartellus/cmc.git
+cd cmc
+bash install.sh
+source ~/.bashrc
+```
+### Initialization
+```bash
+cmc init --new my_project
+cd my_project
+```
 
-4.  **Start the Engines (for now):**
-    ```bash
-    gunicorn --log-level debug svPrueba.app:application
-    ```
+### Build Database
+```bash
+cmc db create users
+cmc db migrate --dev
+```
 
----
+### Wire API & Sync
+```bash
+cmc api register entity users
+cmc api sync
+```
+### Start Engines
+```bash
+cmc up
+```
 
 > [!TIP]
 > **Security:** Use `cmc remove` to uninstall a project. The engine will handle cleaning up not only the files but also the databases and roles in PostgreSQL to ensure no residue is left behind.
