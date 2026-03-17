@@ -370,9 +370,7 @@ class CMCLab:
                         self.console.print(f"[warning]Skipping '{entity}': Not found.[/warning]")
                         continue
                     run_results[entity] = self._run_benchmarks(entity, config_all[entity], conn, migration_ver)
-                
-                self._save_report(run_results, migration_ver)
-                
+                                
         finally: 
             if conn: conn.close()
 

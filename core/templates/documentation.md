@@ -141,10 +141,10 @@ CMC provides a deterministic stress-testing suite. It safely clones your live `d
 The first step is to generate an analysis configuration file for your target structure. This file will be forged at `sv[Project]/config/analysis.json`.
 
 ```bash
-cmc db gen analysis [struct]
+cmc lab --register [struct]
 ```
 
-CMC will automatically detect if the `[struct]` is a `TABLE` or a `VIEW` and map its dependencies, so you can safely generate a config file for a table that has `Foreign Keys`. The generated JSON contract contains precision controls for the stress test:
+CMC will automatically detect if the `[struct]` is a `TABLE`, `VIEW` or a `PSQL Function` and map its dependencies, so you can safely generate a config file for a table that has `Foreign Keys`. The generated JSON contract contains precision controls for the stress test:
 
 * **`type`**: Auto-detected (`TABLE` or `VIEW`).
 * **`defaults`**: The bombardment parameters:
@@ -152,27 +152,48 @@ CMC will automatically detect if the `[struct]` is a `TABLE` or a `VIEW` and map
   * `filter_columns`: How many columns the tool uses simultaneously in `WHERE` clauses to test index efficiency.
   * `rows_to_generate`: The volume of mock data randomly injected into the Lab database.
 * **`_columns`**: An auto-scanned reference list of the structure's columns and data types.
+* **`ranges`**: An array of columns that you want to test for range queries
 * **`includes`**: An array of specific columns you **force** the engine to query (e.g., heavily indexed columns like `SKU`, `email`, or unique codes).
 * **`excludes`**: An array of columns you want the engine to **ignore** during queries (e.g., `address`, `created_at`, or heavy `TEXT` blobs).
 
-#### Step 2: Execute the Bombardment
-Once the configuration is tuned to your needs, execute the test.
+#### Step 2: Seed the lab
+Once the configuration is tuned to your needs, labs needs data to run tests. This data is generated randomlly.
 
-To test a single structure:
 ```bash
-cmc db analysis [struct]
-```
-
-To run a full system audit on all structures defined in the config file:
-```bash
-cmc db analysis
+cmc lab
 ```
 
 > [!WARNING]  
 > **Schema Desync:** The Lab database (`_cmc_lab`) is persistent to save time between consecutive runs. If you just applied a new migration to your live `dev` database, the Lab will be out of sync. You must append the `--reset` flag to force the engine to destroy and re-clone the Lab schema.
 > ```bash
-> cmc db analysis --reset
+> cmc lab --reset
 > ```
+
+#### Step 3: Tests
+##### Real Schema
+CMC can run tests to your actual schema, providing time, Eff and CPU usage:
+
+```bash
+cmc lab --test
+```
+##### Index testing
+CMC provides a strong tool that creates a index for every column, checks resources and drops index, allowing you to choose if a Index is needed.
+
+Every index experiment calculates the Write Tax: the exponential overhead of bulk INSERT/DELETE operations (15% workload stress) on your B-Tree structures.
+
+```bash
+cmc lab index [structure]
+```
+
+For compose indexes, you can manually check them
+
+```bash
+cmc lab index [structure] --on column1 column2...
+```
+
+CMC automatically evaluates the Leftmost Prefix Rule by permuting column order, identifying which leading column provides the highest selectivity for your specific data distribution (yes, it is O(n!), so it is your responsability time taken).
+
+
 ## API
 
 CMC centralizes route management through the **CMC Contract**, a Single Source of Truth (SSOT) that dictates the communication protocol between the frontend and backend. It serves both as a technical enforcer and a definitive developer guide.
