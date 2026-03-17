@@ -15,6 +15,10 @@ class MigrationEngine:
         drops = []
         for type_, name in matches:
             clean_name = name.split('(')[0].strip()
+            
+            if type_.upper() == "INDEX":
+                clean_name = clean_name.split()[0]
+                
             drops.append(f"DROP {type_} IF EXISTS {clean_name} CASCADE;")
         
         return "\n".join(drops[::-1])
@@ -214,7 +218,7 @@ class MigrationEngine:
 
         backup_path = db_dir / target_file
 
-        self.cmc.log.warn(f"NUCLEAR OPTION ACTIVATED: You are about to restore '{target_file}' into [{target_env.upper()}].")
+        self.cmc.log.warn(f"You are about to restore '{target_file}' into [{target_env.upper()}].")
         self.cmc.log.warn("This will DESTROY all current data and replace it with the backup.")
         
         confirm = input(f"Type '{target_env.upper()}' to confirm full database overwrite: ").strip()

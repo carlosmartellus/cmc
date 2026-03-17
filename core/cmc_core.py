@@ -15,7 +15,7 @@ from flask import Flask, jsonify, request
 from core.utils import Logger
 from core.engines.db import DBEngine
 from core.engines.migration import MigrationEngine
-from core.engines.analysis import AnalysisEngine
+from core.engines.lab import CMCLab
 
 class CMC:
     def __init__(self):
@@ -38,7 +38,7 @@ class CMC:
         
         self.db = DBEngine(self)
         self.migrations = MigrationEngine(self)
-        self.analysis = AnalysisEngine(self)
+        self.analysis = CMCLab(self)
 
     def _detect_context(self):
         sv_dirs = [d for d in self.root.iterdir() if d.is_dir() and d.name.startswith("sv")]

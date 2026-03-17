@@ -90,25 +90,30 @@ def main():
     eg_stat.add_argument("--prod", action="store_true")
     p_db_status.set_defaults(func=lambda args: cmc.migrations.status("prod" if args.prod else "dev"))
 
-    # db gen
-    p_db_gen = db_sub.add_parser("gen", help="Generators for DB structures")
-    gen_sub = p_db_gen.add_subparsers(dest="gen_command", required=True)
+    # lab
+    p_lab = subparsers.add_parser("lab", help="CMCLab: Performance environment")
     
-    p_gen_analysis = gen_sub.add_parser("analysis", help="Forge an analysis contract for a table or view")
-    p_gen_analysis.add_argument("name", help="Structure name")
-    p_gen_analysis.set_defaults(func=lambda args: cmc.gen_analysis_config(args.name))
+    p_lab.add_argument("-e", "--entity", help="Target entity for setup or test")
+    p_lab.add_argument("-r", "--register", help="Register a new structure (table/view) into the Lab config")
+    p_lab.add_argument("--reset", action="store_true", help="Hard reset")
+    p_lab.add_argument("--drop", action="store_true", help="Vaporize lab")
+    p_lab.add_argument("--test", action="store_true", help="Execute benchmarks")
 
-    # db analysis
-    p_db_analysis = db_sub.add_parser("analysis", help="Run performance analysis on an entity")
-    p_db_analysis.add_argument("name", nargs="?", default=None, help="Table or View to analyze (default: all in analysis.json)")
-    p_db_analysis.add_argument("--reset", action="store_true", help="Hard reset: re-clone schema from source")
-    p_db_analysis.add_argument("--remove", action="store_true", help="Vaporize the lab database")
-    
-    p_db_analysis.set_defaults(func=lambda args: cmc.analysis.execute(
-        args.name, 
-        reset=args.reset, 
-        remove=args.remove
-    ))
+    lab_sub = p_lab.add_subparsers(dest="lab_command")
+
+    p_lab_idx = lab_sub.add_parser("index", help="Test index efficiency")
+    p_lab_idx.add_argument("table", help="Table to experiment on")
+    p_lab_idx.add_argument("--on", nargs="+", help="Columns")
+
+    def handle_lab_commands(args):
+        if args.lab_command == "index":
+            cmc.analysis.run_index_experiment(args.table, columns=args.on)
+        elif args.register:
+            cmc.gen_analysis_config(args.register) 
+        else:
+            cmc.analysis.execute(args.entity, reset=args.reset, remove=args.drop, test=args.test)
+
+    p_lab.set_defaults(func=handle_lab_commands)
 
     # api
     p_api = subparsers.add_parser("api")

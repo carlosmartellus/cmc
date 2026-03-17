@@ -192,7 +192,7 @@ Forging an `Entity` is the fastest way to bridge your database with the API:
 
 #### The CMC Protocol: Strict ID Requirement
 
-To ensure architectural stability and predictable routing, CMC operates under a strict **Convention over Configuration** model regarding entity identity:
+* **Stability through clarity**: CMC operates under a Strict Configuration model. We believe in explicit definitions over hidden conventions. Once configured, CMC follows uncompromising protocols regarding entity identity to ensure your architecture remains predictable at scale
 
 * **Mandatory Primary Key:** Every table registered as an Entity **MUST** have a column named exactly `id`.
 * **Surrogate Keys Everywhere:** This requirement applies to all tables, including junction tables (`N:M` relationships). Even if the table only serves to link two other entities, a unique `id` is required for CMC to manage its lifecycle.
